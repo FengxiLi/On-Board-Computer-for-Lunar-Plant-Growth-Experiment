@@ -1,4 +1,3 @@
-# Plant Growth GUI with Camera, Sensor Display, and LED Control
 import tkinter as tk
 from tkinter import ttk
 from PIL import Image, ImageTk
@@ -15,9 +14,26 @@ def get_cpu_temp():
     try:
         with open("/sys/class/thermal/thermal_zone0/temp", "r") as f:
             milli = int(f.read().strip())
-            return milli / 1000.0
+        return milli / 1000.0
     except:
         return 0.0
+
+# --- Track PG process ---
+pg_process = None
+
+def start_program():
+    global pg_process
+    if pg_process is None or pg_process.poll() is not None:
+        pg_process = subprocess.Popen(["make", "run"])
+        print("PG started.")
+
+def stop_program():
+    global pg_process
+    if pg_process and pg_process.poll() is None:
+        pg_process.terminate()
+        pg_process.wait()
+        pg_process = None
+        print("PG stopped.")
 
 # --- Main Window ---
 root = tk.Tk()
@@ -38,14 +54,12 @@ notebook.pack(fill="both", expand=True)
 # --- Top Left Control Buttons ---
 top_control_frame = tk.Frame(page1)
 top_control_frame.pack(anchor="nw", padx=20, pady=10)
-
-tk.Button(top_control_frame, text="Start Program", command=lambda: print("Start"), width=15).pack(pady=2)
-tk.Button(top_control_frame, text="Stop Program", command=lambda: print("Stop"), width=15).pack(pady=2)
+tk.Button(top_control_frame, text="Start Program", command=start_program, width=15).pack(pady=2)
+tk.Button(top_control_frame, text="Stop Program", command=stop_program, width=15).pack(pady=2)
 
 # --- Center Layout for Page 1 ---
 center_frame = tk.Frame(page1)
 center_frame.pack(expand=True)
-
 left_frame = tk.Frame(center_frame)
 right_frame = tk.Frame(center_frame)
 left_frame.pack(side="left", padx=40, pady=20)
@@ -63,7 +77,6 @@ labels = [
     ("SCD41 Humidity (%)", tk.StringVar()),
     ("CPU Temp (degC)", tk.StringVar())
 ]
-
 for i, (label_text, var) in enumerate(labels):
     tk.Label(left_frame, text=label_text, font=('Helvetica', 13, 'bold')).grid(row=i, column=0, sticky="w", padx=5, pady=3)
     tk.Label(left_frame, textvariable=var, font=('Helvetica', 13)).grid(row=i, column=1, sticky="w", padx=5, pady=3)
@@ -93,7 +106,6 @@ def capture_and_display():
 # --- Buttons for Camera and LEDs ---
 button_frame = tk.Frame(right_frame)
 button_frame.pack()
-
 tk.Button(button_frame, text="Capture Image", command=capture_and_display, width=20).pack(pady=2)
 tk.Button(button_frame, text="Activate UV LED", width=20).pack(pady=2)
 tk.Button(button_frame, text="Stop UV LED", width=20).pack(pady=2)
@@ -126,7 +138,6 @@ read_sensor_data()
 scroll_canvas = tk.Canvas(page2)
 scrollbar = tk.Scrollbar(page2, orient="vertical", command=scroll_canvas.yview)
 scroll_frame = tk.Frame(scroll_canvas)
-
 scroll_frame.bind("<Configure>", lambda e: scroll_canvas.configure(scrollregion=scroll_canvas.bbox("all")))
 scroll_window = scroll_canvas.create_window((0, 0), window=scroll_frame, anchor="n")
 scroll_canvas.configure(yscrollcommand=scrollbar.set)
@@ -150,7 +161,6 @@ sensor_labels = [
     ("SCD41 Temperature (degC)", 6),
     ("SCD41 Humidity (%)", 7),
 ]
-
 figs, canvases = [], []
 for label, _ in sensor_labels:
     fig, ax = plt.subplots(figsize=(8, 2.5))
